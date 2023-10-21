@@ -1,0 +1,159 @@
+#import the relevant libraries needed for the data analysis
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+#import CSV file
+df = pd.read_csv('C:/Users/User/OneDrive/Email attachments/Documents/Personal work/Employment/Project data/Stack Overflow Annual Developer Survey clean.csv')
+
+#remove outliers from the dataset
+def remove_outliers_iqr(df, column):
+    Q1 = df[column].quantile(0.25)
+    Q3 = df[column].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    return df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
+
+filtered_data = df.groupby('Country').apply(lambda x: remove_outliers_iqr(x, 'CompTotalUSD'))
+
+filtered_data = filtered_data.reset_index(drop=True)
+
+filtered_data.to_csv('filtered_data.csv', index=False)
+
+#With the new file, import it into 
+#note that I changed the name of the file to Stack Overflow Annual Developer Survey final
+#import filtered CSV file
+
+df = pd.read_csv('C:/Users/User/OneDrive/Email attachments/Documents/Personal work/Employment/Project data/Stack Overflow Annual Developer Survey clean final.csv')
+
+#What's the industry which has the highest average compensation?
+industry_avg = df.groupby('Industry')['CompTotalUSD'].mean().round(2)
+print(industry_avg)
+
+#Create a bar chart showing the average compensation (USD) by industry
+industry_avg = df.groupby('Industry')['CompTotalUSD'].mean().round(2)
+# Create a bar chart
+fig, ax = plt.subplots(figsize=(10, 6))
+# Custom x-axis labels with newline characters
+x_labels = [label.replace(" ", "\n") for label in industry_avg.index]
+industry_avg.plot(kind='bar', ax=ax)
+ax.set_xticks(range(len(x_labels)))
+ax.set_xticklabels(x_labels, rotation=90, fontsize=12)  # Rotate the x-axis labels 90 degrees clockwise
+# Increase the bottom margin size
+plt.subplots_adjust(bottom=0.20)
+plt.xlabel('Industry')
+plt.ylabel('Average Compensation (USD)')
+plt.title('Average Compensation by Industry')
+# Add data labels to the bars
+for i, v in enumerate(industry_avg):
+    ax.text(i, v, str(v), ha='center', va='bottom', fontsize=10)
+# Display the bar chart
+plt.show()
+
+#How much does remote working matter to employees?
+remote_work_counts = df['RemoteWork'].value_counts()
+print(remote_work_counts)
+
+#How does coding experience effect the level of pay?
+# Drop rows where either 'YearsCode' or 'CompTotalPPP' is missing (NaN)
+df = df.dropna(subset=['YearsCode', 'CompTotalPPP'])
+
+# Convert 'YearsCode' to a numeric data type (integer)
+df['YearsCode'] = pd.to_numeric(df['YearsCode'], errors='coerce')
+
+# Calculate the correlation
+correlation = df['YearsCode'].corr(df['CompTotalPPP'])
+
+# Print the correlation coefficient to 7 decimal places
+print(f"Correlation between Years of Coding Experience and Compensation: {correlation:.7f}")
+
+#Create a table showing average compensation in various experience bands
+# Define a mapping for the "YearsCode" column
+years_mapping = {
+    'Less than 1 year': 0,
+    '1 to 5 years': 5,
+    '6 to 10 years': 10,
+    '11 to 15 years': 15,
+    '16 to 20 years': 20,
+    '21 to 25 years': 25,
+    '26 to 30 years': 30,
+    '31 to 35 years': 35,
+    '36 to 40 years': 40,
+    '41 to 45 years': 45,
+    '46 to 50 years': 50,
+    'More than 50 years': 51
+}
+
+# Map the "YearsCode" column to numeric values
+df['YearsCode'] = df['YearsCode'].replace(years_mapping)
+
+# Convert "YearsCode" column to numeric
+df['YearsCode'] = pd.to_numeric(df['YearsCode'], errors='coerce')
+
+# Define the bins and labels
+bins = [0, 1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, float('inf')]
+bin_labels = ['Less than 1 year', '1 to 5 years', '6 to 10 years', '11 to 15 years', '16 to 20 years',
+              '21 to 25 years', '26 to 30 years', '31 to 35 years', '36 to 40 years', '41 to 45 years',
+              '46 to 50 years', 'More than 50 years']
+
+# Use pd.cut to create the bins and assign labels for "YearsCode" column
+df['YearsCodeBand'] = pd.cut(df['YearsCode'], bins=bins, labels=bin_labels, right=False)
+
+# Calculate the average compensation within each bin for "YearsCode" column and round to 2 decimal places
+average_compensation_yearscode = df.groupby('YearsCodeBand')['CompTotalUSD'].mean().round(2)
+
+# Define a mapping for the "YearsCodePro" column
+years_pro_mapping = {
+    'Less than 1 year': 0,
+    '1 to 5 years': 5,
+    '6 to 10 years': 10,
+    '11 to 15 years': 15,
+    '16 to 20 years': 20,
+    '21 to 25 years': 25,
+    '26 to 30 years': 30,
+    '31 to 35 years': 35,
+    '36 to 40 years': 40,
+    '41 to 45 years': 45,
+    '46 to 50 years': 50,
+    'More than 50 years': 51
+}
+
+# Map the "YearsCodePro" column to numeric values
+df['YearsCodePro'] = df['YearsCodePro'].replace(years_pro_mapping)
+
+# Convert "YearsCodePro" column to numeric
+df['YearsCodePro'] = pd.to_numeric(df['YearsCodePro'], errors='coerce')
+
+# Use pd.cut to create the bins and assign labels for "YearsCodePro" column
+df['YearsCodeProBand'] = pd.cut(df['YearsCodePro'], bins=bins, labels=bin_labels, right=False)
+
+# Calculate the average compensation within each bin for "YearsCodePro" column and round to 2 decimal places
+average_compensation_yearscodepro = df.groupby('YearsCodeProBand')['CompTotalUSD'].mean().round(2)
+
+# Print or visualize the results for both "YearsCode" and "YearsCodePro"
+print("Average Compensation for YearsCode:")
+print(average_compensation_yearscode)
+
+print("\nAverage Compensation for YearsCodePro:")
+print(average_compensation_yearscodepro)
+
+#What are the most common coding languages used?
+# Split the languages by semicolon and create a list of all languages
+languages_list = df['LanguageHaveWorkedWith'].str.split(';').dropna().sum()
+
+# Count the occurrences of each language
+language_counts = Counter(languages_list)
+
+# Find the top 10 most commonly used languages
+top_10_languages = language_counts.most_common(10)
+
+# Print the top 10 languages and their counts
+print("Top 10 most commonly used coding languages:")
+for rank, (language, count) in enumerate(top_10_languages, 1):
+    print(f"{rank}. {language}: {count} occurrences")
+education_counts = df['EdLevel'].value_counts()
+
+print("Education Level Counts:")
+print(education_counts)
+
